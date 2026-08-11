@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "slot_bloqueado")
+@Table(name = "slots_bloqueados")
 @Getter
 @Setter
 @NoArgsConstructor
