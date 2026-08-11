@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: synchro-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-synchro}
+      POSTGRES_USER: ${DB_USERNAME:-synchro}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-synchro}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - synchro-pgdata:/var/lib/postgresql/data
+
+volumes:
+  synchro-pgdata:
