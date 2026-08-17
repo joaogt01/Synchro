@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface ProfissionalRepository extends JpaRepository<Profissional, Long> {
-    Optional<Profissional> buscarUsuarioPorId(Long idUsuario);
+    Optional<Profissional> findbyUsuarioId(Long idUsuario);
 }

@@ -33,4 +33,15 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(erro);
     }
+
+    public ResponseEntity<ApiError> handleBusinessRule(IllegalArgumentException exception){
+        ApiError erro = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Business Rule Violation",
+                exception.getMessage(),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
 }
