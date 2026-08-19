@@ -6,6 +6,7 @@ import com.projetos.agendamento.profissional.service.ProfissionalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,27 +20,32 @@ public class ProfissionalController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     public ProfissionalResponse criar(@Valid @RequestBody ProfissionalRequest request) {
         return profissionalService.criar(request);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ProfissionalResponse buscarPorId(@PathVariable Long id) {
         return profissionalService.buscarPorId(id);
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public List<ProfissionalResponse> buscarTodos() {
         return profissionalService.buscarTodos();
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
     public ProfissionalResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProfissionalRequest request) {
-        return profissionalService.atualizar(id,request);
+        return profissionalService.atualizarComOwnership(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
     public void deletar(@PathVariable Long id) {
         profissionalService.delete(id);
     }

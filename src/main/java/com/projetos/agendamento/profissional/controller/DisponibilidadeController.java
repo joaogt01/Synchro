@@ -6,6 +6,7 @@ import com.projetos.agendamento.profissional.service.DisponibilidadeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,12 +20,14 @@ public class DisponibilidadeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public DisponibilidadeResponse cadastrar(@PathVariable Long profissionalId, @Valid @RequestBody DisponibilidadeRequest request){
-        return disponibilidadeService.cadastrar(profissionalId, request);
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
+    public DisponibilidadeResponse cadastrar(@PathVariable Long profissionalId, @Valid @RequestBody DisponibilidadeRequest request) {
+        return disponibilidadeService.cadastrarComOwnership(profissionalId, request);
     }
 
     @GetMapping
-    public List<DisponibilidadeResponse> listar(@PathVariable Long profissionalId){
+    @PreAuthorize("isAuthenticated()")
+    public List<DisponibilidadeResponse> listar(@PathVariable Long profissionalId) {
         return disponibilidadeService.listarPorProfissional(profissionalId);
     }
 }
