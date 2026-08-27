@@ -14,7 +14,7 @@ public class HorarioDisponivelValidador implements ValidadorAgendamento{
     @Override
     public void validar(Consulta consulta){
         boolean ocupado = consultaRepository
-                .existsByProfissionalIdAndStartsAt(consulta.getProfissional().getId(), consulta.getInicio());
+                .existsByProfissionalIdAndInicio(consulta.getProfissional().getId(), consulta.getInicio());
 
         if (ocupado){
             throw new IllegalArgumentException("Horário já está ocupado para este profissional");

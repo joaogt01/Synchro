@@ -7,5 +7,5 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SlotBloqueadoRepository extends JpaRepository<SlotBloqueado, Long> {
-    List<SlotBloqueado> findByProfissionalIdAndStartAtBetween(Long profissionalId, LocalDateTime inicio, LocalDateTime fim);
+    List<SlotBloqueado> findByProfissionalIdAndInicioBetween(Long profissionalId, LocalDateTime inicio, LocalDateTime fim);
 }
