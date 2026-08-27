@@ -14,7 +14,7 @@ public class PacienteSemConflitoValidador implements ValidadorAgendamento{
     @Override
     public void validar(Consulta consulta){
         boolean conflito = consultaRepository
-                .existsByPacienteIdAndStartAt(consulta.getPaciente().getId(), consulta.getInicio());
+                .existsByPacienteIdAndInicio(consulta.getPaciente().getId(), consulta.getInicio());
         if (conflito){
             throw new IllegalArgumentException("Paciente já possui consulta agendada neste horário");
         }

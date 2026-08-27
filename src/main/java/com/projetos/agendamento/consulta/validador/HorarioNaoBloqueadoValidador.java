@@ -14,7 +14,7 @@ public class HorarioNaoBloqueadoValidador implements ValidadorAgendamento{
     @Override
     public void validar(Consulta consulta) {
         boolean bloqueado = !slotBloqueadoRepository
-                .findByProfissionalIdAndStartAtBetween(
+                .findByProfissionalIdAndInicioBetween(
                         consulta.getProfissional().getId(),
                         consulta.getInicio(),
                         consulta.getFim()
