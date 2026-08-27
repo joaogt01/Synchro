@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -15,6 +16,7 @@ public class FlywayMigrationTest {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18");
 
+    @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registrar) {
         registrar.add("spring.datasource.url", postgres::getJdbcUrl);
         registrar.add("spring.datasource.username", postgres::getUsername);
