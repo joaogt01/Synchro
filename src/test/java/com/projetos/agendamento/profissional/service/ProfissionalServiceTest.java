@@ -3,6 +3,7 @@ package com.projetos.agendamento.profissional.service;
 import com.projetos.agendamento.autenticacao.entity.UserRole;
 import com.projetos.agendamento.autenticacao.entity.Usuario;
 import com.projetos.agendamento.autenticacao.repository.UsuarioRepository;
+import com.projetos.agendamento.profissional.dto.ProfissionalAtualizarRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalResponse;
 import com.projetos.agendamento.profissional.entity.Profissional;
@@ -11,12 +12,15 @@ import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -34,6 +38,9 @@ class ProfissionalServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private ProfissionalService profissionalService;
 
@@ -48,25 +55,44 @@ class ProfissionalServiceTest {
     }
 
     @Test
-    void deve_criar_profissional_quando_usuario_existe() {
-        Usuario usuario = Usuario.builder().id(1L).nome("Dra. Ana").build();
-        Profissional saved = Profissional.builder().id(10L).usuario(usuario).especialidade("Dermatologia").ativo(true).build();
+    void deve_criar_usuario_e_profissional_em_uma_unica_chamada() {
+        ProfissionalRequest request = new ProfissionalRequest("Dra. Ana", "ana@example.com", "senha12345", "Dermatologia");
 
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-        when(profissionalRepository.save(any(Profissional.class))).thenReturn(saved);
+        when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("senha12345")).thenReturn("hash");
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> {
+                    Usuario u = invocation.getArgument(0);
+                    u.setId(1L);
+                    return u;
+                });
+        when(profissionalRepository.save(any(Profissional.class)))
+                .thenAnswer(invocation -> {
+                    Profissional p = invocation.getArgument(0);
+                    p.setId(10L);
+                    return p;
+                });
 
-        ProfissionalResponse response = profissionalService.criar(new ProfissionalRequest(1L, "Dermatologia"));
+        ProfissionalResponse response = profissionalService.criar(request);
 
         assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.idUsuario()).isEqualTo(1L);
         assertThat(response.especialidade()).isEqualTo("Dermatologia");
+
+        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+        org.mockito.Mockito.verify(usuarioRepository).save(usuarioCaptor.capture());
+        assertThat(usuarioCaptor.getValue().getRole()).isEqualTo(UserRole.PROFISSIONAL);
     }
 
     @Test
-    void nao_deve_criar_profissional_quando_usuario_nao_existe() {
-        when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
+    void nao_deve_criar_profissional_quando_email_ja_cadastrado() {
+        when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(Usuario.builder().build()));
 
-        assertThatThrownBy(() -> profissionalService.criar(new ProfissionalRequest(99L, "Cardiologia")))
-                .isInstanceOf(ResourceNotFoundException.class);
+        ProfissionalRequest request = new ProfissionalRequest("Dra. Ana", "ana@example.com", "senha12345", "Dermatologia");
+
+        assertThatThrownBy(() -> profissionalService.criar(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("E-mail já cadastrado");
     }
 
     @Test
@@ -86,7 +112,7 @@ class ProfissionalServiceTest {
         when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
         autenticarComo(atacante);
 
-        assertThatThrownBy(() -> profissionalService.atualizarComOwnership(10L, new ProfissionalRequest(1L, "Dermatologia")))
+        assertThatThrownBy(() -> profissionalService.atualizarComOwnership(10L, new ProfissionalAtualizarRequest("Dermatologia")))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -98,7 +124,7 @@ class ProfissionalServiceTest {
         when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
         autenticarComo(dono);
 
-        ProfissionalResponse response = profissionalService.atualizarComOwnership(10L, new ProfissionalRequest(1L, "Dermatologia"));
+        ProfissionalResponse response = profissionalService.atualizarComOwnership(10L, new ProfissionalAtualizarRequest("Dermatologia"));
 
         assertThat(response.especialidade()).isEqualTo("Dermatologia");
     }
@@ -112,7 +138,7 @@ class ProfissionalServiceTest {
         when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
         autenticarComo(admin);
 
-        ProfissionalResponse response = profissionalService.atualizarComOwnership(10L, new ProfissionalRequest(1L, "Dermatologia"));
+        ProfissionalResponse response = profissionalService.atualizarComOwnership(10L, new ProfissionalAtualizarRequest("Dermatologia"));
 
         assertThat(response.especialidade()).isEqualTo("Dermatologia");
     }
