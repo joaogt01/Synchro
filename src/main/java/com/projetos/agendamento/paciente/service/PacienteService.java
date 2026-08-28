@@ -74,7 +74,8 @@ public class PacienteService {
         Usuario usuarioAutenticado = AutenticacaoUtils.usuarioAutenticado();
 
         boolean papelPrivilegiado = usuarioAutenticado.getRole() == UserRole.ADMIN
-                || usuarioAutenticado.getRole() == UserRole.PROFISSIONAL;
+                || usuarioAutenticado.getRole() == UserRole.PROFISSIONAL
+                || usuarioAutenticado.getRole() == UserRole.ATENDENTE;
 
         boolean donoDoRecurso = paciente.getUsuario().getId().equals(usuarioAutenticado.getId());
 

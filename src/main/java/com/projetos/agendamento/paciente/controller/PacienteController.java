@@ -26,13 +26,13 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL', 'PACIENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL', 'ATENDENTE', 'PACIENTE')")
     public PacienteResponse buscarPorId(@PathVariable Long id) {
         return pacienteService.buscarPorIdComOwnership(id);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL', 'ATENDENTE')")
     public List<PacienteResponse> listarTodos() {
         return pacienteService.listarTodos();
     }
