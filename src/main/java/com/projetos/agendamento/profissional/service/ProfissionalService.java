@@ -4,16 +4,21 @@ import com.projetos.agendamento.autenticacao.entity.Usuario;
 import com.projetos.agendamento.autenticacao.entity.UserRole;
 import com.projetos.agendamento.autenticacao.repository.UsuarioRepository;
 import com.projetos.agendamento.autenticacao.security.AutenticacaoUtils;
+import com.projetos.agendamento.profissional.dto.ProfissionalAtualizarRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalMapper;
 import com.projetos.agendamento.profissional.dto.ProfissionalRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalResponse;
 import com.projetos.agendamento.profissional.entity.Profissional;
 import com.projetos.agendamento.profissional.repository.ProfissionalRepository;
 import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -23,11 +28,26 @@ public class ProfissionalService {
 
     private final ProfissionalRepository profissionalRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public ProfissionalResponse criar(ProfissionalRequest request) {
-        Usuario usuario = usuarioRepository.findById(request.idUsuario())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario não encontrado: " + request.idUsuario()));
+        if (usuarioRepository.findByEmail(request.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+        }
+
+        Usuario usuario = Usuario.builder()
+                .nome(request.nome())
+                .email(request.email())
+                .senha(passwordEncoder.encode(request.senha()))
+                .role(UserRole.PROFISSIONAL)
+                .build();
+
+        try {
+            usuario = usuarioRepository.save(usuario);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+        }
 
         Profissional profissional = Profissional.builder()
                 .usuario(usuario)
@@ -51,7 +71,7 @@ public class ProfissionalService {
     }
 
     @Transactional
-    public ProfissionalResponse atualizarComOwnership(Long id, ProfissionalRequest request) {
+    public ProfissionalResponse atualizarComOwnership(Long id, ProfissionalAtualizarRequest request) {
         Profissional profissional = getOrThrow(id);
 
         Usuario usuarioAutenticado = AutenticacaoUtils.usuarioAutenticado();

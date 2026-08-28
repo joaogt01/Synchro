@@ -1,5 +1,6 @@
 package com.projetos.agendamento.profissional.controller;
 
+import com.projetos.agendamento.profissional.dto.ProfissionalAtualizarRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalRequest;
 import com.projetos.agendamento.profissional.dto.ProfissionalResponse;
 import com.projetos.agendamento.profissional.service.ProfissionalService;
@@ -39,7 +40,7 @@ public class ProfissionalController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
-    public ProfissionalResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProfissionalRequest request) {
+    public ProfissionalResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProfissionalAtualizarRequest request) {
         return profissionalService.atualizarComOwnership(id, request);
     }
 
