@@ -36,6 +36,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
     }
 
+    @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception exception) {
         ApiError erro = new ApiError(
                 LocalDateTime.now(),
@@ -47,11 +48,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(erro);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleBusinessRule(IllegalArgumentException exception){
         ApiError erro = new ApiError(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 "Business Rule Violation",
+                exception.getMessage(),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleInvalidStateTransition(IllegalStateException exception) {
+        ApiError erro = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Transição de Estado Inválida",
                 exception.getMessage(),
                 List.of()
         );
