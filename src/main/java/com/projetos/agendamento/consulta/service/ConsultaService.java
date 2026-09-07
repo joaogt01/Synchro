@@ -8,6 +8,10 @@ import com.projetos.agendamento.consulta.dto.ConsultaRequest;
 import com.projetos.agendamento.consulta.dto.ConsultaResponse;
 import com.projetos.agendamento.consulta.entity.Consulta;
 import com.projetos.agendamento.consulta.entity.StatusAgendamento;
+<<<<<<< HEAD
+=======
+import com.projetos.agendamento.consulta.evento.ConsultaAgendadaEvento;
+>>>>>>> dd794b5 (feat: adiciona ConsultaService e sistema de eventos de agendamento)
 import com.projetos.agendamento.consulta.repository.ConsultaRepository;
 import com.projetos.agendamento.paciente.entity.Paciente;
 import com.projetos.agendamento.paciente.repository.PacienteRepository;
@@ -15,6 +19,10 @@ import com.projetos.agendamento.profissional.entity.Profissional;
 import com.projetos.agendamento.profissional.repository.ProfissionalRepository;
 import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+<<<<<<< HEAD
+=======
+import org.springframework.context.ApplicationEventPublisher;
+>>>>>>> dd794b5 (feat: adiciona ConsultaService e sistema de eventos de agendamento)
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,6 +41,10 @@ public class ConsultaService {
     private final PacienteRepository pacienteRepository;
     private final ProfissionalRepository profissionalRepository;
     private final OrquestradorValidacaoAgendamento orquestradorValidacaoAgendamento;
+<<<<<<< HEAD
+=======
+    private final ApplicationEventPublisher eventPublisher;
+>>>>>>> dd794b5 (feat: adiciona ConsultaService e sistema de eventos de agendamento)
 
     @Transactional
     public ConsultaResponse criar(ConsultaRequest request) {
@@ -55,7 +67,23 @@ public class ConsultaService {
         orquestradorValidacaoAgendamento.validarTodos(consulta);
 
         try {
+<<<<<<< HEAD
             return ConsultaMapper.toResponse(consultaRepository.save(consulta));
+=======
+            Consulta salva = consultaRepository.save(consulta);
+
+            eventPublisher.publishEvent(new ConsultaAgendadaEvento(
+                    salva.getId(),
+                    salva.getProfissional().getId(),
+                    salva.getProfissional().getUsuario().getNome(),
+                    salva.getPaciente().getId(),
+                    salva.getPaciente().getUsuario().getNome(),
+                    salva.getInicio(),
+                    salva.getFim()
+            ));
+
+            return ConsultaMapper.toResponse(salva);
+>>>>>>> dd794b5 (feat: adiciona ConsultaService e sistema de eventos de agendamento)
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Horário já ocupado para este profissional");
         }
@@ -131,7 +159,11 @@ public class ConsultaService {
     private void exigirProfissionalPodeAgendar(Profissional profissional) {
         Usuario usuarioAutenticado = AutenticacaoUtils.usuarioAutenticado();
         if (usuarioAutenticado.getRole() != UserRole.PROFISSIONAL) {
+<<<<<<< HEAD
             return; // ADMIN e ATENDENTE podem agendar para qualquer profissional
+=======
+            return;
+>>>>>>> dd794b5 (feat: adiciona ConsultaService e sistema de eventos de agendamento)
         }
         boolean ehOProprioProfissional = profissional.getUsuario().getId().equals(usuarioAutenticado.getId());
         if (!ehOProprioProfissional) {
