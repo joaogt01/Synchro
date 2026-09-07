@@ -7,16 +7,19 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class HorarioDisponivelValidador implements ValidadorAgendamento{
+public class HorarioDisponivelValidador implements ValidadorAgendamento {
 
     private final ConsultaRepository consultaRepository;
 
     @Override
-    public void validar(Consulta consulta){
+    public void validar(Consulta consulta) {
         boolean ocupado = consultaRepository
-                .existsByProfissionalIdAndInicio(consulta.getProfissional().getId(), consulta.getInicio());
+                .buscarConflitosDeHorarioProfissional(
+                        consulta.getProfissional().getId(), consulta.getInicio(), consulta.getFim())
+                .stream()
+                .anyMatch(existente -> !existente.getId().equals(consulta.getId()));
 
-        if (ocupado){
+        if (ocupado) {
             throw new IllegalArgumentException("Horário já está ocupado para este profissional");
         }
     }

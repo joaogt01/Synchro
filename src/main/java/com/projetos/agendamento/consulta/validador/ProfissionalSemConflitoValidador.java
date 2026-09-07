@@ -7,16 +7,26 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class ProfissionalSemConflitoValidador implements ValidadorAgendamento{
+public class ProfissionalSemConflitoValidador implements ValidadorAgendamento {
 
     private final ConsultaRepository consultaRepository;
 
     @Override
     public void validar(Consulta consulta) {
         boolean conflito = consultaRepository
+<<<<<<< HEAD
                 .existsByProfissionalIdAndInicio(consulta.getProfissional().getId(), consulta.getInicio());
         if (conflito){
             throw new IllegalArgumentException("Profissional já possui consulta agendada neste horário");
+=======
+                .buscarConflitosDeHorarioProfissional(
+                        consulta.getProfissional().getId(), consulta.getInicio(), consulta.getFim())
+                .stream()
+                .anyMatch(existente -> !existente.getId().equals(consulta.getId()));
+
+        if (conflito) {
+            throw new IllegalArgumentException("Profissional já possui consulta agendada neste intervalo de horário");
+>>>>>>> 4b539fa (feat: implementa validadores de horario e disponibilidade)
         }
     }
 }
