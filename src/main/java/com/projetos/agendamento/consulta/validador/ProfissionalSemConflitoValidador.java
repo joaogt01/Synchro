@@ -14,11 +14,6 @@ public class ProfissionalSemConflitoValidador implements ValidadorAgendamento {
     @Override
     public void validar(Consulta consulta) {
         boolean conflito = consultaRepository
-<<<<<<< HEAD
-                .existsByProfissionalIdAndInicio(consulta.getProfissional().getId(), consulta.getInicio());
-        if (conflito){
-            throw new IllegalArgumentException("Profissional já possui consulta agendada neste horário");
-=======
                 .buscarConflitosDeHorarioProfissional(
                         consulta.getProfissional().getId(), consulta.getInicio(), consulta.getFim())
                 .stream()
@@ -26,7 +21,6 @@ public class ProfissionalSemConflitoValidador implements ValidadorAgendamento {
 
         if (conflito) {
             throw new IllegalArgumentException("Profissional já possui consulta agendada neste intervalo de horário");
->>>>>>> 4b539fa (feat: implementa validadores de horario e disponibilidade)
         }
     }
 }
