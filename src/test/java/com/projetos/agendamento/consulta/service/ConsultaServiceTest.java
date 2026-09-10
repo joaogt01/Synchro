@@ -5,31 +5,14 @@ import com.projetos.agendamento.autenticacao.entity.Usuario;
 import com.projetos.agendamento.consulta.dto.ConsultaRequest;
 import com.projetos.agendamento.consulta.dto.ConsultaResponse;
 import com.projetos.agendamento.consulta.entity.Consulta;
-<<<<<<< HEAD
 import com.projetos.agendamento.consulta.entity.StatusAgendamento;
-=======
 import com.projetos.agendamento.consulta.evento.ConsultaAgendadaEvento;
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
 import com.projetos.agendamento.consulta.repository.ConsultaRepository;
 import com.projetos.agendamento.paciente.entity.Paciente;
 import com.projetos.agendamento.paciente.repository.PacienteRepository;
 import com.projetos.agendamento.profissional.entity.Profissional;
 import com.projetos.agendamento.profissional.repository.ProfissionalRepository;
-<<<<<<< HEAD
 import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.server.ResponseStatusException;
-
-=======
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,11 +22,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -67,11 +52,6 @@ class ConsultaServiceTest {
     @Mock
     private OrquestradorValidacaoAgendamento orquestradorValidacaoAgendamento;
 
-<<<<<<< HEAD
-    @InjectMocks
-    private ConsultaService consultaService;
-
-=======
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -80,7 +60,6 @@ class ConsultaServiceTest {
 
     private static final LocalDate DATA_FIXA = LocalDate.of(2026, 9, 14);
 
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
     @AfterEach
     void limparContextoDeSeguranca() {
         SecurityContextHolder.clearContext();
@@ -100,21 +79,11 @@ class ConsultaServiceTest {
     }
 
     @Test
-<<<<<<< HEAD
     void ADMIN_deve_conseguir_criar_consulta_para_qualquer_profissional() {
         Usuario admin = Usuario.builder().id(1L).role(UserRole.ADMIN).build();
         Usuario donoDoProfissional = Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build();
         Profissional profissional = profissionalComUsuario(10L, donoDoProfissional);
         Paciente paciente = pacienteComUsuario(20L, Usuario.builder().id(3L).role(UserRole.PACIENTE).build());
-=======
-    @DisplayName("Deve publicar evento ConsultaAgendada após salvar consulta com sucesso")
-    void deve_publicar_evento_ConsultaAgendada_apos_salvar_com_sucesso() {
-        Usuario admin = Usuario.builder().id(1L).role(UserRole.ADMIN).build();
-        Usuario donoDoProfissional = Usuario.builder().id(2L).nome("Dra. Ana").role(UserRole.PROFISSIONAL).build();
-        Profissional profissional = profissionalComUsuario(10L, donoDoProfissional);
-        Usuario usuarioPaciente = Usuario.builder().id(3L).nome("João").role(UserRole.PACIENTE).build();
-        Paciente paciente = pacienteComUsuario(20L, usuarioPaciente);
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
 
         autenticarComo(admin);
         when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
@@ -122,27 +91,16 @@ class ConsultaServiceTest {
         when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
             Consulta c = invocation.getArgument(0);
             c.setId(100L);
-<<<<<<< HEAD
             c.setCriadoEm(LocalDateTime.now());
             return c;
         });
 
         LocalDateTime inicio = LocalDateTime.now().plusDays(1);
         ConsultaRequest request = new ConsultaRequest(10L, 20L, inicio, inicio.plusMinutes(30));
-=======
-            c.setCriadoEm(DATA_FIXA.atTime(10, 0));
-            return c;
-        });
-
-        LocalDateTime inicio = DATA_FIXA.atTime(10, 0);
-        LocalDateTime fim = inicio.plusMinutes(105);
-        ConsultaRequest request = new ConsultaRequest(10L, 20L, inicio, fim);
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
 
         ConsultaResponse response = consultaService.criar(request);
 
         assertThat(response.id()).isEqualTo(100L);
-<<<<<<< HEAD
         assertThat(response.status()).isEqualTo(StatusAgendamento.AGENDADO);
         verify(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
     }
@@ -181,30 +139,11 @@ class ConsultaServiceTest {
 
         ConsultaResponse response = consultaService.criar(request);
 
-        assertThat(response.profissionalId()).isEqualTo(10L);
+        assertThat(response.profissional().id()).isEqualTo(10L);
     }
 
     @Test
     void deve_lancar_conflito_quando_validador_reprova_a_consulta() {
-=======
-
-        verify(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
-
-        ArgumentCaptor<ConsultaAgendadaEvento> eventoCaptor = ArgumentCaptor.forClass(ConsultaAgendadaEvento.class);
-        verify(eventPublisher).publishEvent(eventoCaptor.capture());
-
-        ConsultaAgendadaEvento evento = eventoCaptor.getValue();
-        assertThat(evento.consultaId()).isEqualTo(100L);
-        assertThat(evento.profissionalId()).isEqualTo(10L);
-        assertThat(evento.pacienteId()).isEqualTo(20L);
-        assertThat(evento.inicio()).isEqualTo(inicio);
-        assertThat(evento.fim()).isEqualTo(fim);
-    }
-
-    @Test
-    @DisplayName("Não deve publicar evento nem salvar a consulta quando a validação falhar")
-    void nao_deve_publicar_evento_quando_validacao_de_agendamento_falha() {
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
         Usuario admin = Usuario.builder().id(1L).role(UserRole.ADMIN).build();
         Profissional profissional = profissionalComUsuario(10L, Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build());
         Paciente paciente = pacienteComUsuario(20L, Usuario.builder().id(3L).role(UserRole.PACIENTE).build());
@@ -212,7 +151,6 @@ class ConsultaServiceTest {
         autenticarComo(admin);
         when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
         when(pacienteRepository.findById(20L)).thenReturn(Optional.of(paciente));
-<<<<<<< HEAD
         doThrow(new IllegalArgumentException("Horário fora da disponibilidade do profissional"))
                 .when(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
 
@@ -364,7 +302,57 @@ class ConsultaServiceTest {
 
         verify(consultaRepository).buscarComFiltros(null, 20L, null, null);
     }
-=======
+
+    @Test
+    @DisplayName("Deve publicar evento ConsultaAgendada após salvar consulta com sucesso")
+    void deve_publicar_evento_ConsultaAgendada_apos_salvar_com_sucesso() {
+        Usuario admin = Usuario.builder().id(1L).role(UserRole.ADMIN).build();
+        Usuario donoDoProfissional = Usuario.builder().id(2L).nome("Dra. Ana").role(UserRole.PROFISSIONAL).build();
+        Profissional profissional = profissionalComUsuario(10L, donoDoProfissional);
+        Usuario usuarioPaciente = Usuario.builder().id(3L).nome("João").role(UserRole.PACIENTE).build();
+        Paciente paciente = pacienteComUsuario(20L, usuarioPaciente);
+
+        autenticarComo(admin);
+        when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
+        when(pacienteRepository.findById(20L)).thenReturn(Optional.of(paciente));
+        when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
+            Consulta c = invocation.getArgument(0);
+            c.setId(100L);
+            c.setCriadoEm(DATA_FIXA.atTime(10, 0));
+            return c;
+        });
+
+        LocalDateTime inicio = DATA_FIXA.atTime(10, 0);
+        LocalDateTime fim = inicio.plusMinutes(105);
+        ConsultaRequest request = new ConsultaRequest(10L, 20L, inicio, fim);
+
+        ConsultaResponse response = consultaService.criar(request);
+
+        assertThat(response.id()).isEqualTo(100L);
+
+        verify(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
+
+        ArgumentCaptor<ConsultaAgendadaEvento> eventoCaptor = ArgumentCaptor.forClass(ConsultaAgendadaEvento.class);
+        verify(eventPublisher).publishEvent(eventoCaptor.capture());
+
+        ConsultaAgendadaEvento evento = eventoCaptor.getValue();
+        assertThat(evento.consultaId()).isEqualTo(100L);
+        assertThat(evento.profissionalId()).isEqualTo(10L);
+        assertThat(evento.pacienteId()).isEqualTo(20L);
+        assertThat(evento.inicio()).isEqualTo(inicio);
+        assertThat(evento.fim()).isEqualTo(fim);
+    }
+
+    @Test
+    @DisplayName("Não deve publicar evento nem salvar a consulta quando a validação falhar")
+    void nao_deve_publicar_evento_quando_validacao_de_agendamento_falha() {
+        Usuario admin = Usuario.builder().id(1L).role(UserRole.ADMIN).build();
+        Profissional profissional = profissionalComUsuario(10L, Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build());
+        Paciente paciente = pacienteComUsuario(20L, Usuario.builder().id(3L).role(UserRole.PACIENTE).build());
+
+        autenticarComo(admin);
+        when(profissionalRepository.findById(10L)).thenReturn(Optional.of(profissional));
+        when(pacienteRepository.findById(20L)).thenReturn(Optional.of(paciente));
         doThrow(new IllegalArgumentException("Profissional já possui consulta agendada neste intervalo de horário"))
                 .when(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
 
@@ -378,5 +366,4 @@ class ConsultaServiceTest {
         verifyNoInteractions(eventPublisher);
         verify(consultaRepository, never()).save(any());
     }
->>>>>>> 16389f5 (test: adiciona testes unitarios e de integracao para agendamentos)
 }
