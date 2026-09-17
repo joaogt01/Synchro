@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface SlotBloqueadoRepository extends JpaRepository<SlotBloqueado, Long> {
     List<SlotBloqueado> findByProfissionalIdAndInicioBetween(Long profissionalId, LocalDateTime inicio, LocalDateTime fim);
+
+    List<SlotBloqueado> findByProfissionalId(Long profissionalId);
 }
