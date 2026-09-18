@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Date;
 
 @Service
@@ -19,9 +20,13 @@ public class JwtService {
 
     public JwtService(
             @Value("${security.jwt.secret}") String secret,
-            @Value("${security.jwt.expiration-minutes}") long expirationMinutes) {
+            @Value("${security.jwt.expiration-minutes:15}") long expirationMinutes) {
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMinutes = expirationMinutes;
+    }
+
+    public Duration ttlAcesso() {
+        return Duration.ofMinutes(expirationMinutes);
     }
 
     public String gerarToken(Usuario usuario) {
