@@ -73,7 +73,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return Optional.empty();
     }
 
-    static Optional<String> lerCookie(HttpServletRequest request, String nome) {
+    public static Optional<String> lerCookie(HttpServletRequest request, String nome) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
             return Optional.empty();
