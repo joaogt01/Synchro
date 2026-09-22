@@ -83,4 +83,12 @@ public class PacienteService {
             throw new AccessDeniedException("Acesso negado a este paciente");
         }
     }
+
+    @Transactional(readOnly = true)
+    public PacienteResponse buscarMeuCadastro() {
+        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
+        Paciente paciente = pacienteRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de paciente"));
+        return PacienteMapper.toResponse(paciente);
+    }
 }
