@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { api, HttpError } from "../../lib/api"
 import type { PacienteResponse } from "../../types/api"
@@ -8,11 +8,11 @@ import { ErrorMessage } from "../../components/common/ErrorMessage"
 import { EmptyState } from "../../components/common/EmptyState"
 
 export default function PacientesListPage() {
-    const { temRole } = useAuth()
+    const { temRole, meuPaciente } = useAuth()
     const navigate = useNavigate()
 
     if (temRole("PACIENTE")) {
-        return <BuscaPacientePorIdPaciente />
+        return <MeuCadastro paciente={meuPaciente} />
     }
 
     return <ListaCompleta />
@@ -73,28 +73,15 @@ export default function PacientesListPage() {
     }
 }
 
-function BuscaPacientePorIdPaciente() {
+function MeuCadastro({ paciente }: { paciente: PacienteResponse | null }) {
     const navigate = useNavigate()
-    const [idBusca, setIdBusca] = useState("")
 
-    function handleSubmit(e: FormEvent) {
-        e.preventDefault()
-        if (idBusca) navigate(`/pacientes/${idBusca}`)
-    }
+    useEffect(() => {
+        if (paciente) {
+            navigate(`/pacientes/${paciente.id}`, { replace: true })
+        }
+    }, [paciente, navigate])
 
-    return (
-        <div style={{ padding: "28px 32px" }}>
-            <h1 style={{ fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Pacientes</h1>
-            <div className="card" style={{ padding: "18px 20px", maxWidth: 480, marginBottom: 16 }}>
-                <p style={{ fontSize: 12.5, color: "#64748b", margin: "0 0 12px" }}>
-                    A API ainda não oferece um endpoint de "meu cadastro de paciente". Se você já sabe o ID do seu
-                    cadastro de paciente, pode consultá-lo abaixo (o acesso só é permitido ao próprio dono).
-                </p>
-                <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10 }}>
-                    <input type="number" placeholder="ID do paciente" value={idBusca} onChange={(e) => setIdBusca(e.target.value)} />
-                    <button className="btn-primary" type="submit">Ver</button>
-                </form>
-            </div>
-        </div>
-    )
+    if (!paciente) return <Loading label="Carregando seu cadastro..." />
+    return <Loading />
 }
