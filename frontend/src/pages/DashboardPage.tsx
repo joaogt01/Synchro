@@ -34,13 +34,14 @@ export default function DashboardPage() {
             </div>
 
             {temRole("PACIENTE") && (
-                <div className="card" style={{ padding: "16px 20px", background: "#fefce8", borderColor: "#fde68a" }}>
-                    <strong style={{ fontSize: 13 }}>Aviso:</strong>
-                    <p style={{ fontSize: 12.5, color: "#854d0e", margin: "6px 0 0" }}>
-                        A API ainda não expõe um endpoint para o paciente consultar o próprio cadastro ou histórico de
-                        consultas diretamente. Assim que o backend
-                        adicionar esses endpoints, esta tela poderá mostrar seus dados automaticamente.
+                <div className="card" style={{ padding: "16px 20px" }}>
+                    <strong style={{ fontSize: 13 }}>Meu cadastro</strong>
+                    <p style={{ fontSize: 12.5, color: "#64748b", margin: "6px 0 12px" }}>
+                        Acesse seus dados de paciente e histórico de consultas.
                     </p>
+                    <Link to="/pacientes" className="btn-primary" style={{ textDecoration: "none" }}>
+                        Ver meu cadastro
+                    </Link>
                 </div>
             )}
         </div>
