@@ -144,4 +144,27 @@ public class PacienteServiceTest {
         assertThatThrownBy(() -> pacienteService.atualizarComOwnership(10L, new PacienteRequest(1L, "81900000000")))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void deve_buscar_meu_cadastro_de_paciente() {
+        Usuario usuarioLogado = Usuario.builder().id(1L).role(UserRole.PACIENTE).build();
+        Paciente paciente = Paciente.builder().id(10L).usuario(usuarioLogado).telefone("81999999999").build();
+
+        when(pacienteRepository.findByUsuarioId(1L)).thenReturn(Optional.of(paciente));
+        autenticarComo(usuarioLogado);
+
+        PacienteResponse response = pacienteService.buscarMeuCadastro();
+
+        assertThat(response.id()).isEqualTo(10L);
+    }
+
+    @Test
+    void deve_lancar_not_found_quando_usuario_nao_tem_cadastro_de_paciente() {
+        Usuario admin = Usuario.builder().id(9L).role(UserRole.ADMIN).build();
+        when(pacienteRepository.findByUsuarioId(9L)).thenReturn(Optional.empty());
+        autenticarComo(admin);
+
+        assertThatThrownBy(() -> pacienteService.buscarMeuCadastro())
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
 }
