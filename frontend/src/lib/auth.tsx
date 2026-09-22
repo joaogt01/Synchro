@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api, clearToken, getToken, onUnauthorized, setToken } from './api'
-import type { LoginRequest, LoginResponse, RegistroRequest, UserRole, UsuarioResponse } from '../types/api'
+import type { LoginRequest, LoginResponse, RegistroRequest, UserRole, UsuarioResponse, PacienteResponse, ProfissionalResponse } from '../types/api'
 
 interface AuthContextValue {
     usuario: UsuarioResponse | null
+    meuPaciente: PacienteResponse | null
+    meuProfissional: ProfissionalResponse | null
     carregando: boolean
     autenticado: boolean
     login: (dados: LoginRequest) => Promise<void>
@@ -16,12 +18,24 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [usuario, setUsuario] = useState<UsuarioResponse | null>(null)
+    const [meuPaciente, setMeuPaciente] = useState<PacienteResponse | null>(null)
+    const [meuProfissional, setMeuProfissional] = useState<ProfissionalResponse | null>(null)
     const [carregando, setCarregando] = useState(true)
 
     async function carregarPerfil() {
         try {
             const perfil = await api.get<UsuarioResponse>('/api/me')
             setUsuario(perfil)
+
+            if (perfil.role === 'PACIENTE') {
+                api.get<PacienteResponse>('/api/me/paciente')
+                    .then(setMeuPaciente)
+                    .catch(() => setMeuPaciente(null))
+            } else if (perfil.role === 'PROFISSIONAL') {
+                api.get<ProfissionalResponse>('/api/me/profissional')
+                    .then(setMeuProfissional)
+                    .catch(() => setMeuProfissional(null))
+            }
         } catch {
             setUsuario(null)
             clearToken()
@@ -33,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         onUnauthorized(() => {
             setUsuario(null)
+            setMeuPaciente(null)
+            setMeuProfissional(null)
         })
         if (getToken()) {
             carregarPerfil()
@@ -56,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     function logout() {
         clearToken()
         setUsuario(null)
+        setMeuPaciente(null)
+        setMeuProfissional(null)
     }
 
     function temRole(...roles: UserRole[]) {
@@ -64,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider
-            value={{ usuario, carregando, autenticado: !!usuario, login, registrar, logout, temRole }}
+            value={{ usuario, meuPaciente, meuProfissional, carregando, autenticado: !!usuario, login, registrar, logout, temRole }}
         >
             {children}
         </AuthContext.Provider>
