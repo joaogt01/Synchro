@@ -95,4 +95,12 @@ public class ProfissionalService {
         return profissionalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profissional não encontrado: " + id));
     }
+
+    @Transactional(readOnly = true)
+    public ProfissionalResponse buscarMeuCadastro() {
+        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
+        Profissional profissional = profissionalRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de profissional"));
+        return ProfissionalMapper.toResponse(profissional);
+    }
 }
