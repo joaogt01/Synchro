@@ -3,12 +3,15 @@ package com.projetos.agendamento.consulta.service;
 import com.projetos.agendamento.autenticacao.entity.UserRole;
 import com.projetos.agendamento.autenticacao.entity.Usuario;
 import com.projetos.agendamento.autenticacao.security.AutenticacaoUtils;
+import com.projetos.agendamento.consulta.dto.ConsultaHistoricoStatusResponse;
 import com.projetos.agendamento.consulta.dto.ConsultaMapper;
 import com.projetos.agendamento.consulta.dto.ConsultaRequest;
 import com.projetos.agendamento.consulta.dto.ConsultaResponse;
 import com.projetos.agendamento.consulta.entity.Consulta;
+import com.projetos.agendamento.consulta.entity.ConsultaHistoricoStatus;
 import com.projetos.agendamento.consulta.entity.StatusAgendamento;
 import com.projetos.agendamento.consulta.evento.ConsultaAgendadaEvento;
+import com.projetos.agendamento.consulta.repository.ConsultaHistoricoStatusRepository;
 import com.projetos.agendamento.consulta.repository.ConsultaRepository;
 import com.projetos.agendamento.paciente.entity.Paciente;
 import com.projetos.agendamento.paciente.repository.PacienteRepository;
@@ -18,6 +21,8 @@ import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -36,6 +41,7 @@ public class ConsultaService {
     private final ProfissionalRepository profissionalRepository;
     private final OrquestradorValidacaoAgendamento orquestradorValidacaoAgendamento;
     private final ApplicationEventPublisher eventPublisher;
+    private final ConsultaHistoricoStatusRepository historicoStatusRepository;
 
     @Transactional
     public ConsultaResponse criar(ConsultaRequest request) {
@@ -59,6 +65,8 @@ public class ConsultaService {
 
         try {
             Consulta salva = consultaRepository.save(consulta);
+
+            registrarHistorico(salva, null);
 
             eventPublisher.publishEvent(new ConsultaAgendadaEvento(
                     salva.getId(),
@@ -84,7 +92,8 @@ public class ConsultaService {
     }
 
     @Transactional(readOnly = true)
-    public List<ConsultaResponse> listarComFiltros(Long profissionalId, Long pacienteId, LocalDateTime inicio, LocalDateTime fim) {
+    public Page<ConsultaResponse> listarComFiltros(
+            Long profissionalId, Long pacienteId, LocalDateTime inicio, LocalDateTime fim, Pageable pageable) {
         Usuario usuarioAutenticado = AutenticacaoUtils.usuarioAutenticado();
 
         if (usuarioAutenticado.getRole() == UserRole.PACIENTE) {
@@ -97,9 +106,8 @@ public class ConsultaService {
                     .orElseThrow(() -> new IllegalStateException("Usuário autenticado não possui cadastro de profissional"));
         }
 
-        return consultaRepository.buscarComFiltros(profissionalId, pacienteId, inicio, fim).stream()
-                .map(ConsultaMapper::toResponse)
-                .toList();
+        return consultaRepository.buscarComFiltros(profissionalId, pacienteId, inicio, fim, pageable)
+                .map(ConsultaMapper::toResponse);
     }
 
     @Transactional
@@ -107,7 +115,9 @@ public class ConsultaService {
         Consulta consulta = getOrThrow(id);
         exigirDonoAtendenteOuAdmin(consulta);
         exigirStatusAtual(consulta, StatusAgendamento.AGENDADO);
+        StatusAgendamento statusAnterior = consulta.getStatus();
         consulta.setStatus(StatusAgendamento.CONFIRMADO);
+        registrarHistorico(consulta, statusAnterior);
         return ConsultaMapper.toResponse(consulta);
     }
 
@@ -116,7 +126,9 @@ public class ConsultaService {
         Consulta consulta = getOrThrow(id);
         exigirDonoOuAdmin(consulta);
         exigirStatusAtual(consulta, StatusAgendamento.CONFIRMADO);
+        StatusAgendamento statusAnterior = consulta.getStatus();
         consulta.setStatus(StatusAgendamento.COMPLETO);
+        registrarHistorico(consulta, statusAnterior);
         return ConsultaMapper.toResponse(consulta);
     }
 
@@ -127,8 +139,66 @@ public class ConsultaService {
         if (consulta.getStatus() == StatusAgendamento.COMPLETO || consulta.getStatus() == StatusAgendamento.CANCELADO) {
             throw new IllegalStateException("Não é possível cancelar uma consulta que já está " + consulta.getStatus());
         }
+        StatusAgendamento statusAnterior = consulta.getStatus();
         consulta.setStatus(StatusAgendamento.CANCELADO);
+        registrarHistorico(consulta, statusAnterior);
         return ConsultaMapper.toResponse(consulta);
+    }
+
+    @Transactional
+    public ConsultaResponse reagendar(Long id, ConsultaRequest request) {
+        Consulta consulta = getOrThrow(id);
+        exigirDonoOuAdmin(consulta);
+
+        if (consulta.getStatus() == StatusAgendamento.COMPLETO || consulta.getStatus() == StatusAgendamento.CANCELADO) {
+            throw new IllegalStateException(
+                    "Não é possível reagendar uma consulta que já está " + consulta.getStatus());
+        }
+
+        LocalDateTime inicioAnterior = consulta.getInicio();
+        LocalDateTime fimAnterior = consulta.getFim();
+
+        consulta.setInicio(request.inicio());
+        consulta.setFim(request.fim());
+        consulta.setStatus(StatusAgendamento.AGENDADO);
+
+        try {
+            orquestradorValidacaoAgendamento.validarTodos(consulta);
+        } catch (RuntimeException e) {
+            consulta.setInicio(inicioAnterior);
+            consulta.setFim(fimAnterior);
+            throw e;
+        }
+
+        return ConsultaMapper.toResponse(consulta);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConsultaHistoricoStatusResponse> listarHistorico(Long consultaId) {
+        Consulta consulta = getOrThrow(consultaId);
+        exigirVisualizacaoPermitida(consulta);
+
+        return historicoStatusRepository.findByConsultaIdOrderByAlteradoEmAsc(consultaId).stream()
+                .map(h -> new ConsultaHistoricoStatusResponse(
+                        h.getId(),
+                        h.getStatusAnterior(),
+                        h.getStatusNovo(),
+                        h.getAlteradoPor() != null ? h.getAlteradoPor().getNome() : "Sistema",
+                        h.getAlteradoEm()
+                ))
+                .toList();
+    }
+
+    private void registrarHistorico(Consulta consulta, StatusAgendamento statusAnterior) {
+        Usuario usuarioAutenticado = AutenticacaoUtils.usuarioAutenticado();
+        boolean usuarioPersistido = usuarioAutenticado.getId() != null && usuarioAutenticado.getId() > 0;
+
+        historicoStatusRepository.save(ConsultaHistoricoStatus.builder()
+                .consulta(consulta)
+                .statusAnterior(statusAnterior)
+                .statusNovo(consulta.getStatus())
+                .alteradoPor(usuarioPersistido ? usuarioAutenticado : null)
+                .build());
     }
 
     private Consulta getOrThrow(Long id) {
