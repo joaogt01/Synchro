@@ -5,11 +5,12 @@ import com.projetos.agendamento.paciente.dto.PacienteResponse;
 import com.projetos.agendamento.paciente.service.PacienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -33,8 +34,8 @@ public class PacienteController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL', 'ATENDENTE')")
-    public List<PacienteResponse> listarTodos() {
-        return pacienteService.listarTodos();
+    public Page<PacienteResponse> listarTodos(@PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return pacienteService.listarTodos(pageable);
     }
 
     @PutMapping("/{id}")
