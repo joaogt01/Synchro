@@ -2,6 +2,8 @@ package com.projetos.agendamento.consulta.repository;
 
 import com.projetos.agendamento.consulta.entity.Consulta;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -34,7 +36,6 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
               AND (:pacienteId IS NULL OR c.paciente.id = :pacienteId)
               AND (:inicio IS NULL OR c.inicio >= :inicio)
               AND (:fim IS NULL OR c.inicio <= :fim)
-            ORDER BY c.inicio
             """)
-    List<Consulta> buscarComFiltros(Long profissionalId, Long pacienteId, LocalDateTime inicio, LocalDateTime fim);
+    Page<Consulta> buscarComFiltros(Long profissionalId, Long pacienteId, LocalDateTime inicio, LocalDateTime fim, Pageable pageable);
 }
