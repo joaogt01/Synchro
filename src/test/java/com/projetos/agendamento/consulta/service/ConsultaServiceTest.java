@@ -5,8 +5,10 @@ import com.projetos.agendamento.autenticacao.entity.Usuario;
 import com.projetos.agendamento.consulta.dto.ConsultaRequest;
 import com.projetos.agendamento.consulta.dto.ConsultaResponse;
 import com.projetos.agendamento.consulta.entity.Consulta;
+import com.projetos.agendamento.consulta.entity.ConsultaHistoricoStatus;
 import com.projetos.agendamento.consulta.entity.StatusAgendamento;
 import com.projetos.agendamento.consulta.evento.ConsultaAgendadaEvento;
+import com.projetos.agendamento.consulta.repository.ConsultaHistoricoStatusRepository;
 import com.projetos.agendamento.consulta.repository.ConsultaRepository;
 import com.projetos.agendamento.paciente.entity.Paciente;
 import com.projetos.agendamento.paciente.repository.PacienteRepository;
@@ -23,6 +25,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,6 +58,9 @@ class ConsultaServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ConsultaHistoricoStatusRepository historicoStatusRepository;
 
     @InjectMocks
     private ConsultaService consultaService;
@@ -103,6 +110,7 @@ class ConsultaServiceTest {
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.status()).isEqualTo(StatusAgendamento.AGENDADO);
         verify(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
+        verify(historicoStatusRepository).save(any(ConsultaHistoricoStatus.class));
     }
 
     @Test
@@ -206,6 +214,7 @@ class ConsultaServiceTest {
         ConsultaResponse response = consultaService.confirmar(1L);
 
         assertThat(response.status()).isEqualTo(StatusAgendamento.CONFIRMADO);
+        verify(historicoStatusRepository).save(any(ConsultaHistoricoStatus.class));
     }
 
     @Test
@@ -293,14 +302,16 @@ class ConsultaServiceTest {
     void PACIENTE_deve_ter_filtro_de_pacienteId_forcado_para_si_mesmo_na_listagem() {
         Usuario usuarioPaciente = Usuario.builder().id(3L).role(UserRole.PACIENTE).build();
         Paciente paciente = pacienteComUsuario(20L, usuarioPaciente);
+        Pageable pageable = PageRequest.of(0, 20);
 
         autenticarComo(usuarioPaciente);
         when(pacienteRepository.findByUsuarioId(3L)).thenReturn(Optional.of(paciente));
-        when(consultaRepository.buscarComFiltros(null, 20L, null, null)).thenReturn(java.util.List.of());
+        when(consultaRepository.buscarComFiltros(null, 20L, null, null, pageable))
+                .thenReturn(org.springframework.data.domain.Page.empty());
 
-        consultaService.listarComFiltros(999L, null, null, null); // tenta forçar outro profissionalId, mas isso é ignorado
+        consultaService.listarComFiltros(999L, null, null, null, pageable); // tenta forçar outro profissionalId, mas isso é ignorado
 
-        verify(consultaRepository).buscarComFiltros(null, 20L, null, null);
+        verify(consultaRepository).buscarComFiltros(null, 20L, null, null, pageable);
     }
 
     @Test
@@ -365,5 +376,86 @@ class ConsultaServiceTest {
 
         verifyNoInteractions(eventPublisher);
         verify(consultaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Deve reagendar consulta AGENDADA para novo horário válido")
+    void deve_reagendar_consulta_para_novo_horario() {
+        Usuario donoUsuario = Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build();
+        Consulta consulta = Consulta.builder().id(1L).status(StatusAgendamento.AGENDADO)
+                .profissional(profissionalComUsuario(10L, donoUsuario))
+                .inicio(LocalDateTime.now().plusDays(1))
+                .fim(LocalDateTime.now().plusDays(1).plusMinutes(30))
+                .build();
+
+        autenticarComo(donoUsuario);
+        when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+        LocalDateTime novoInicio = LocalDateTime.now().plusDays(2);
+        ConsultaRequest request = new ConsultaRequest(10L, 20L, novoInicio, novoInicio.plusMinutes(30));
+
+        ConsultaResponse response = consultaService.reagendar(1L, request);
+
+        assertThat(response.inicio()).isEqualTo(novoInicio);
+        assertThat(response.status()).isEqualTo(StatusAgendamento.AGENDADO);
+    }
+
+    @Test
+    @DisplayName("Deve reverter horário quando validação falhar ao reagendar")
+    void deve_reverter_horario_quando_validacao_falha_ao_reagendar() {
+        Usuario donoUsuario = Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build();
+        LocalDateTime inicioOriginal = LocalDateTime.now().plusDays(1);
+        Consulta consulta = Consulta.builder().id(1L).status(StatusAgendamento.AGENDADO)
+                .profissional(profissionalComUsuario(10L, donoUsuario))
+                .inicio(inicioOriginal)
+                .fim(inicioOriginal.plusMinutes(30))
+                .build();
+
+        autenticarComo(donoUsuario);
+        when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+        doThrow(new IllegalArgumentException("Horário já ocupado"))
+                .when(orquestradorValidacaoAgendamento).validarTodos(any(Consulta.class));
+
+        LocalDateTime novoInicio = LocalDateTime.now().plusDays(3);
+        ConsultaRequest request = new ConsultaRequest(10L, 20L, novoInicio, novoInicio.plusMinutes(30));
+
+        assertThatThrownBy(() -> consultaService.reagendar(1L, request))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(consulta.getInicio()).isEqualTo(inicioOriginal);
+    }
+
+    @Test
+    @DisplayName("Não deve reagendar consulta já CANCELADA")
+    void nao_deve_reagendar_consulta_cancelada() {
+        Consulta consulta = Consulta.builder().id(1L).status(StatusAgendamento.CANCELADO)
+                .profissional(profissionalComUsuario(10L, Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build()))
+                .build();
+
+        autenticarComo(Usuario.builder().id(9L).role(UserRole.ADMIN).build());
+        when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+        ConsultaRequest request = new ConsultaRequest(10L, 20L, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusMinutes(30));
+
+        assertThatThrownBy(() -> consultaService.reagendar(1L, request))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("Deve registrar histórico ao confirmar consulta")
+    void deve_registrar_historico_ao_confirmar() {
+        Consulta consulta = Consulta.builder().id(1L).status(StatusAgendamento.AGENDADO)
+                .profissional(profissionalComUsuario(10L, Usuario.builder().id(2L).role(UserRole.PROFISSIONAL).build()))
+                .build();
+
+        autenticarComo(Usuario.builder().id(5L).role(UserRole.ATENDENTE).build());
+        when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+        consultaService.confirmar(1L);
+
+        ArgumentCaptor<ConsultaHistoricoStatus> captor = ArgumentCaptor.forClass(ConsultaHistoricoStatus.class);
+        verify(historicoStatusRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatusAnterior()).isEqualTo(StatusAgendamento.AGENDADO);
+        assertThat(captor.getValue().getStatusNovo()).isEqualTo(StatusAgendamento.CONFIRMADO);
     }
 }
