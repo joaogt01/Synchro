@@ -11,11 +11,11 @@ import com.projetos.agendamento.paciente.entity.Paciente;
 import com.projetos.agendamento.paciente.repository.PacienteRepository;
 import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -45,10 +45,17 @@ public class PacienteService {
     }
 
     @Transactional(readOnly = true)
-    public List<PacienteResponse> listarTodos() {
-        return pacienteRepository.findAll().stream()
-                .map(PacienteMapper::toResponse)
-                .toList();
+    public PacienteResponse buscarMeuCadastro() {
+        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
+        Paciente paciente = pacienteRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de paciente"));
+        return PacienteMapper.toResponse(paciente);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PacienteResponse> listarTodos(Pageable pageable) {
+        return pacienteRepository.findAll(pageable)
+                .map(PacienteMapper::toResponse);
     }
 
     @Transactional
@@ -82,13 +89,5 @@ public class PacienteService {
         if (!papelPrivilegiado && !donoDoRecurso) {
             throw new AccessDeniedException("Acesso negado a este paciente");
         }
-    }
-
-    @Transactional(readOnly = true)
-    public PacienteResponse buscarMeuCadastro() {
-        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
-        Paciente paciente = pacienteRepository.findByUsuarioId(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de paciente"));
-        return PacienteMapper.toResponse(paciente);
     }
 }
