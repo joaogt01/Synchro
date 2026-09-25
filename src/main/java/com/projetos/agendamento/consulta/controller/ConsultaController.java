@@ -1,10 +1,14 @@
 package com.projetos.agendamento.consulta.controller;
 
+import com.projetos.agendamento.consulta.dto.ConsultaHistoricoStatusResponse;
 import com.projetos.agendamento.consulta.dto.ConsultaRequest;
 import com.projetos.agendamento.consulta.dto.ConsultaResponse;
 import com.projetos.agendamento.consulta.service.ConsultaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,13 +39,14 @@ public class ConsultaController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public List<ConsultaResponse> listar(
+    public Page<ConsultaResponse> listar(
             @RequestParam(required = false) Long profissionalId,
             @RequestParam(required = false) Long pacienteId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime inicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fim
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fim,
+            @PageableDefault(size = 20, sort = "inicio") Pageable pageable
     ) {
-        return consultaService.listarComFiltros(profissionalId, pacienteId, inicio, fim);
+        return consultaService.listarComFiltros(profissionalId, pacienteId, inicio, fim, pageable);
     }
 
     @PostMapping("/{id}/confirmar")
@@ -60,5 +65,17 @@ public class ConsultaController {
     @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
     public ConsultaResponse cancelar(@PathVariable Long id) {
         return consultaService.cancelar(id);
+    }
+
+    @PatchMapping("/{id}/reagendar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROFISSIONAL')")
+    public ConsultaResponse reagendar(@PathVariable Long id, @Valid @RequestBody ConsultaRequest request) {
+        return consultaService.reagendar(id, request);
+    }
+
+    @GetMapping("/{id}/historico")
+    @PreAuthorize("isAuthenticated()")
+    public List<ConsultaHistoricoStatusResponse> historico(@PathVariable Long id) {
+        return consultaService.listarHistorico(id);
     }
 }
