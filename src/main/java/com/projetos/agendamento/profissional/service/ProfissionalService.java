@@ -12,6 +12,8 @@ import com.projetos.agendamento.profissional.entity.Profissional;
 import com.projetos.agendamento.profissional.repository.ProfissionalRepository;
 import com.projetos.agendamento.utils.exception.ResourceNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,10 +64,17 @@ public class ProfissionalService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProfissionalResponse> buscarTodos() {
-        return profissionalRepository.findAll().stream()
-                .map(ProfissionalMapper::toResponse)
-                .toList();
+    public ProfissionalResponse buscarMeuCadastro() {
+        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
+        Profissional profissional = profissionalRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de profissional"));
+        return ProfissionalMapper.toResponse(profissional);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProfissionalResponse> buscarTodos(Pageable pageable) {
+        return profissionalRepository.findAll(pageable)
+                .map(ProfissionalMapper::toResponse);
     }
 
     @Transactional
@@ -94,13 +101,5 @@ public class ProfissionalService {
     private Profissional getOrThrow(Long id) {
         return profissionalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profissional não encontrado: " + id));
-    }
-
-    @Transactional(readOnly = true)
-    public ProfissionalResponse buscarMeuCadastro() {
-        Long usuarioId = AutenticacaoUtils.usuarioIdAutenticado();
-        Profissional profissional = profissionalRepository.findByUsuarioId(usuarioId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário autenticado não possui cadastro de profissional"));
-        return ProfissionalMapper.toResponse(profissional);
     }
 }
